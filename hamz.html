@@ -1,0 +1,2347 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Super Kick Off DB Editor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+  <style>
+    :root {
+      --bg-primary: #090d16;
+      --bg-secondary: #111827;
+      --bg-card: #162032;
+      --bg-input: #0d1320;
+      --border-color: #26354d;
+      --neon-green: #00f57a;
+      --neon-green-dim: rgba(0, 245, 122, 0.14);
+      --neon-green-glow: 0 0 16px rgba(0, 245, 122, 0.35);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --danger-dim: rgba(239, 68, 68, 0.15);
+      --warning: #f59e0b;
+      --info: #38bdf8;
+      --radius: 12px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(0, 245, 122, 0.06), transparent 35%),
+        radial-gradient(circle at 85% 90%, rgba(56, 189, 248, 0.05), transparent 35%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    /* Top Header */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(17, 24, 39, 0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.85rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--neon-green-dim);
+      border: 1px solid var(--neon-green);
+      box-shadow: var(--neon-green-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--neon-green);
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -0.5px;
+      flex-shrink: 0;
+    }
+
+    .brand-text h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: var(--text-main);
+    }
+
+    .brand-text span {
+      font-size: 0.75rem;
+      color: var(--neon-green);
+      font-weight: 600;
+      display: block;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 9px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    .btn-primary {
+      background: var(--neon-green);
+      color: #04130a;
+      box-shadow: 0 0 12px rgba(0, 245, 122, 0.25);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #22ff8e;
+      box-shadow: var(--neon-green-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+
+    .btn-outline:hover:not(:disabled) {
+      border-color: var(--neon-green);
+      color: var(--neon-green);
+    }
+
+    .btn-danger {
+      background: var(--danger-dim);
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-sm {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+      border-radius: 7px;
+    }
+
+    /* Main Container */
+    .container {
+      width: 100%;
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 1.25rem;
+      flex: 1;
+    }
+
+    /* Engine Status Banner */
+    .engine-banner {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fcd34d;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    /* Welcome Screen (Before DB Imported) */
+    .welcome-screen {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      max-width: 680px;
+      margin: 2.5rem auto;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .welcome-screen::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
+    }
+
+    .welcome-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      background: var(--neon-green-dim);
+      border: 1px solid var(--neon-green);
+      color: var(--neon-green);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--neon-green-glow);
+    }
+
+    .welcome-screen h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.6rem;
+      color: var(--text-main);
+    }
+
+    .welcome-screen p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 520px;
+      margin: 0 auto 1.75rem;
+    }
+
+    .feature-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.75rem;
+    }
+
+    .pill {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+    }
+
+    /* Dashboard Workspace */
+    .workspace {
+      display: none;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1rem 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--neon-green);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--neon-green);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    /* Controls & Filters Bar */
+    .controls-panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.85rem;
+    }
+
+    @media (min-width: 768px) {
+      .controls-panel {
+        grid-template-columns: 2fr 1fr 1fr auto;
+        align-items: end;
+      }
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .control-group label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .input-field,
+    .select-field {
+      width: 100%;
+      background: var(--bg-input);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.9rem;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .input-field:focus,
+    .select-field:focus {
+      border-color: var(--neon-green);
+      box-shadow: 0 0 0 2px rgba(0, 245, 122, 0.15);
+    }
+
+    .input-field:disabled,
+    .select-field:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    /* Table Section */
+    .table-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-header-bar {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      background: rgba(22, 32, 50, 0.5);
+    }
+
+    .table-header-bar h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+    }
+
+    .badge-neon {
+      background: var(--neon-green-dim);
+      border-color: rgba(0, 245, 122, 0.4);
+      color: var(--neon-green);
+    }
+
+    .badge-warn {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.86rem;
+    }
+
+    th {
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0.75rem 0.9rem;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.7rem 0.9rem;
+      border-bottom: 1px solid rgba(38, 53, 77, 0.55);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(0, 245, 122, 0.04);
+    }
+
+    tr.edited-row td {
+      background: rgba(0, 245, 122, 0.08);
+    }
+
+    .player-name-cell {
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .col-hint {
+      display: block;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-family: monospace;
+      text-transform: lowercase;
+      font-weight: 400;
+    }
+
+    /* Pagination Bar */
+    .pagination-bar {
+      padding: 0.85rem 1rem;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .pagination-info {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .page-input {
+      width: 68px;
+      text-align: center;
+      padding: 0.35rem 0.4rem;
+      font-size: 0.82rem;
+      border-radius: 6px;
+      background: var(--bg-input);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Modal System */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(5, 8, 15, 0.82);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 760px;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+      animation: modalPop 0.18s ease-out;
+    }
+
+    .modal-dialog.modal-sm {
+      max-width: 440px;
+    }
+
+    @keyframes modalPop {
+      from {
+        opacity: 0;
+        transform: scale(0.96) translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .modal-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .modal-header h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.35rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0.2rem 0.4rem;
+      border-radius: 6px;
+    }
+
+    .modal-close:hover {
+      color: var(--text-main);
+      background: var(--bg-card);
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 0.9rem 1.25rem;
+      border-top: 1px solid var(--border-color);
+      background: var(--bg-card);
+      border-bottom-left-radius: 14px;
+      border-bottom-right-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    /* Form Grid in Modal */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 0.95rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.4rem;
+    }
+
+    .form-col-code {
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: var(--neon-green);
+      background: var(--neon-green-dim);
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+    }
+
+    .form-help {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .skills-notice {
+      margin-top: 1.1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #bae6fd;
+      font-size: 0.8rem;
+    }
+
+    .skills-notice strong {
+      display: block;
+      margin-bottom: 0.25rem;
+      color: #38bdf8;
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(9, 13, 22, 0.86);
+      backdrop-filter: blur(6px);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--neon-green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-width: calc(100vw - 2.5rem);
+      width: 360px;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--neon-green);
+      color: var(--text-main);
+      padding: 0.8rem 1rem;
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+      font-size: 0.84rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      animation: slideIn 0.2s ease-out;
+    }
+
+    .toast.toast-error {
+      border-left-color: var(--danger);
+    }
+
+    .toast.toast-warn {
+      border-left-color: var(--warning);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .empty-state {
+      padding: 2.5rem 1rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hidden File Input -->
+  <input type="file" id="dbFileInput" accept=".db,.sqlite,.sqlite3,application/x-sqlite3,application/octet-stream" style="display: none;" />
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo">SKO</div>
+      <div class="brand-text">
+        <h1>Super Kick Off DB Editor</h1>
+        <span id="engineStatusText">Memuat mesin SQLite WASM...</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" id="btnImportTop" class="btn btn-primary" disabled>
+        <span>📂 Import Database</span>
+      </button>
+      <button type="button" id="btnExportTop" class="btn btn-outline" disabled>
+        <span>💾 Export Database</span>
+      </button>
+      <button type="button" id="btnResetTop" class="btn btn-danger" disabled>
+        <span>↺ Reset All Changes</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Banner Error / Peringatan Mesin -->
+    <div id="engineBanner" class="engine-banner">
+      <span id="engineBannerMsg"></span>
+      <button type="button" id="btnRetryEngine" class="btn btn-sm btn-outline">Muat Ulang Mesin</button>
+    </div>
+
+    <!-- Halaman Awal Sebelum Database Diimpor -->
+    <section id="welcomeScreen" class="welcome-screen">
+      <div class="welcome-icon">⚽</div>
+      <h2>Super Kick Off SQLite Database Editor</h2>
+      <p>
+        Impor file database SQLite asli Super Kick Off (<strong>.db</strong>, <strong>.sqlite</strong>, atau <strong>.sqlite3</strong>) langsung dari penyimpanan Android atau PC Anda. Seluruh proses pengeditan berjalan 100% di memori browser tanpa mengubah file asli.
+      </p>
+      <button type="button" id="btnImportHero" class="btn btn-primary" disabled>
+        <span>📂 Pilih File Database (.db / .sqlite)</span>
+      </button>
+      <div class="feature-pills">
+        <span class="pill">✔ Mendukung ~36 MB & 62.900+ Pemain</span>
+        <span class="pill">✔ Parameterized SQL (Anti-Injection)</span>
+        <span class="pill">✔ Relasi Dinamis Status & Posisi</span>
+        <span class="pill">✔ Ekspor SQLite Utuh</span>
+      </div>
+    </section>
+
+    <!-- Workspace Utama Setelah Database Dimuat -->
+    <section id="workspaceSection" class="workspace">
+      <!-- Kartu Statistik Dashboard -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Database Aktif</span>
+          <div class="stat-value" id="statFileName">-</div>
+          <div class="stat-sub">
+            <span id="statFileSize">-</span> • <span id="statDbStatus">Valid</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-label">Total Pemain</span>
+          <div class="stat-value" id="statTotalPlayers">0</div>
+          <div class="stat-sub" id="statFilteredPlayers">Tabel: jug_jugadores</div>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-label">Total Tabel Database</span>
+          <div class="stat-value" id="statTotalTables">0</div>
+          <div class="stat-sub" id="statDetectedCols">0 kolom pemain terdeteksi</div>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-label">Perubahan Belum Diekspor</span>
+          <div class="stat-value" id="statPendingChanges">0</div>
+          <div class="stat-sub" id="statPendingSub">0 pemain dimodifikasi</div>
+        </div>
+      </div>
+
+      <!-- Bar Pencarian & Filter -->
+      <div class="controls-panel">
+        <div class="control-group">
+          <label for="searchInput">Cari Nama Pemain (jug_nombre)</label>
+          <input
+            type="search"
+            id="searchInput"
+            class="input-field"
+            placeholder="Ketik nama pemain (real-time, tidak peka huruf besar/kecil)..."
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="control-group">
+          <label for="filterPosition">Filter Posisi (jug_posid)</label>
+          <select id="filterPosition" class="select-field">
+            <option value="">Semua Posisi</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="filterStatus">Filter Status (jug_jstdid)</label>
+          <select id="filterStatus" class="select-field">
+            <option value="">Semua Status</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>&nbsp;</label>
+          <button type="button" id="btnClearFilters" class="btn btn-outline">Reset Filter</button>
+        </div>
+      </div>
+
+      <!-- Tabel Data Pemain -->
+      <div class="table-card">
+        <div class="table-header-bar">
+          <h3>
+            <span>Daftar Pemain</span>
+            <span class="badge badge-neon" id="badgePageInfo">Halaman 1</span>
+          </h3>
+          <span class="badge" id="badgeSchemaInfo">50 pemain / halaman</span>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr id="playerTableHeadRow"></tr>
+            </thead>
+            <tbody id="playerTableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Navigasi Pagination -->
+        <div class="pagination-bar">
+          <div class="pagination-info" id="paginationSummary">Menampilkan 0 - 0 dari 0 pemain</div>
+          <div class="pagination-controls">
+            <button type="button" id="btnFirstPage" class="btn btn-sm btn-outline">« Awal</button>
+            <button type="button" id="btnPrevPage" class="btn btn-sm btn-outline">‹ Sebelumnya</button>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Hal:</span>
+            <input type="number" id="pageJumpInput" class="page-input" min="1" value="1" />
+            <button type="button" id="btnNextPage" class="btn btn-sm btn-outline">Berikutnya ›</button>
+            <button type="button" id="btnLastPage" class="btn btn-sm btn-outline">Akhir »</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Edit Pemain -->
+  <div id="editPlayerModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3 id="editModalTitle">Edit Data Pemain</h3>
+          <span id="editModalSubtitle" style="font-size: 0.76rem; color: var(--neon-green);"></span>
+        </div>
+        <button type="button" id="btnCloseEditModal" class="modal-close" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editPlayerForm" novalidate>
+          <div id="editFormGrid" class="form-grid"></div>
+          <div id="skillsInfoBox" class="skills-notice"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btnCancelEdit" class="btn btn-outline">Cancel</button>
+        <button type="button" id="btnSavePlayer" class="btn btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Konfirmasi (Save / Reset) -->
+  <div id="confirmModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <h3 id="confirmModalTitle">Konfirmasi Tindakan</h3>
+        <button type="button" id="btnCloseConfirmModal" class="modal-close" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmModalMessage" style="font-size: 0.9rem; color: var(--text-main);"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btnConfirmCancel" class="btn btn-outline">Batal</button>
+        <button type="button" id="btnConfirmOk" class="btn btn-primary">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Indikator Loading -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div>
+      <h3 id="loadingTitle" style="font-size: 1.05rem; margin-bottom: 0.25rem;">Memproses Database...</h3>
+      <p id="loadingSub" style="font-size: 0.82rem; color: var(--text-muted);">Mohon tunggu sebentar</p>
+    </div>
+  </div>
+
+  <!-- Container Notifikasi Toast -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const PAGE_SIZE = 50;
+      const SQL_CDN_BASE = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/";
+
+      /**
+       * Definisi kolom pemain yang didukung sesuai spesifikasi Super Kick Off.
+       * Tidak mengasumsikan jug_poder sebagai overall rating.
+       */
+      const SUPPORTED_PLAYER_FIELDS = [
+        { col: "jug_nombre", label: "Nama Pemain", type: "text", min: null, max: null, required: true },
+        { col: "jug_edad", label: "Umur", type: "int", min: 10, max: 99 },
+        { col: "jug_estatura", label: "Tinggi Badan", type: "number", min: 100, max: 250 },
+        { col: "jug_star", label: "Bintang", type: "int", min: 0, max: 10 },
+        { col: "jug_valor", label: "Nilai Pemain", type: "number", min: 0, max: 999999999999 },
+        { col: "jug_salario", label: "Gaji", type: "number", min: 0, max: 999999999999 },
+        { col: "jug_perfil", label: "Profil", type: "text_or_int", min: null, max: null },
+        { col: "jug_experiencia", label: "Pengalaman", type: "number", min: 0, max: 999999999 },
+        { col: "jug_condicion", label: "Kondisi", type: "number", min: 0, max: 1000 },
+        { col: "jug_poder", label: "Power (jug_poder)", type: "number", min: 0, max: 9999 },
+        { col: "jug_potencial", label: "Potensi", type: "number", min: 0, max: 9999 },
+        { col: "jug_mercado", label: "Pasar", type: "int", min: 0, max: 999999999 },
+        { col: "jug_posid", label: "Posisi", type: "position", min: 0, max: 9999 },
+        { col: "jug_jstdid", label: "Status Pemain", type: "status", min: 0, max: 9999 },
+        { col: "jug_titular", label: "Status Starter", type: "int", min: 0, max: 10 },
+        { col: "jug_capitan", label: "Kapten", type: "int", min: 0, max: 10 },
+        { col: "jug_numero", label: "Nomor Punggung", type: "int", min: 0, max: 999 }
+      ];
+
+      // State Aplikasi
+      const state = {
+        SQL: null,
+        db: null,
+        originalDbBytes: null,
+        fileName: "",
+        fileSize: 0,
+        totalTables: 0,
+        totalPlayersAll: 0,
+        filteredPlayersCount: 0,
+        currentPage: 1,
+        totalPages: 1,
+        searchQuery: "",
+        filterPos: "",
+        filterStatus: "",
+        availableColumns: new Set(),
+        columnTypes: {},
+        positionsMap: new Map(),
+        statusMap: new Map(),
+        statusRelationValid: false,
+        skillsSummary: {
+          hasHabilidadesTable: false,
+          hasPlayerHabilidadesTable: false,
+          habilidadesCount: 0,
+          playerHabilidadesCount: 0
+        },
+        modifiedPlayerIds: new Set(),
+        totalEditOperations: 0,
+        editingPlayerId: null,
+        editingOriginalRow: null,
+        confirmCallback: null
+      };
+
+      // Referensi Elemen DOM
+      const el = {
+        dbFileInput: document.getElementById("dbFileInput"),
+        engineStatusText: document.getElementById("engineStatusText"),
+        engineBanner: document.getElementById("engineBanner"),
+        engineBannerMsg: document.getElementById("engineBannerMsg"),
+        btnRetryEngine: document.getElementById("btnRetryEngine"),
+        btnImportTop: document.getElementById("btnImportTop"),
+        btnImportHero: document.getElementById("btnImportHero"),
+        btnExportTop: document.getElementById("btnExportTop"),
+        btnResetTop: document.getElementById("btnResetTop"),
+        welcomeScreen: document.getElementById("welcomeScreen"),
+        workspaceSection: document.getElementById("workspaceSection"),
+        statFileName: document.getElementById("statFileName"),
+        statFileSize: document.getElementById("statFileSize"),
+        statDbStatus: document.getElementById("statDbStatus"),
+        statTotalPlayers: document.getElementById("statTotalPlayers"),
+        statFilteredPlayers: document.getElementById("statFilteredPlayers"),
+        statTotalTables: document.getElementById("statTotalTables"),
+        statDetectedCols: document.getElementById("statDetectedCols"),
+        statPendingChanges: document.getElementById("statPendingChanges"),
+        statPendingSub: document.getElementById("statPendingSub"),
+        searchInput: document.getElementById("searchInput"),
+        filterPosition: document.getElementById("filterPosition"),
+        filterStatus: document.getElementById("filterStatus"),
+        btnClearFilters: document.getElementById("btnClearFilters"),
+        badgePageInfo: document.getElementById("badgePageInfo"),
+        badgeSchemaInfo: document.getElementById("badgeSchemaInfo"),
+        playerTableHeadRow: document.getElementById("playerTableHeadRow"),
+        playerTableBody: document.getElementById("playerTableBody"),
+        paginationSummary: document.getElementById("paginationSummary"),
+        btnFirstPage: document.getElementById("btnFirstPage"),
+        btnPrevPage: document.getElementById("btnPrevPage"),
+        pageJumpInput: document.getElementById("pageJumpInput"),
+        btnNextPage: document.getElementById("btnNextPage"),
+        btnLastPage: document.getElementById("btnLastPage"),
+        editPlayerModal: document.getElementById("editPlayerModal"),
+        editModalTitle: document.getElementById("editModalTitle"),
+        editModalSubtitle: document.getElementById("editModalSubtitle"),
+        btnCloseEditModal: document.getElementById("btnCloseEditModal"),
+        editPlayerForm: document.getElementById("editPlayerForm"),
+        editFormGrid: document.getElementById("editFormGrid"),
+        skillsInfoBox: document.getElementById("skillsInfoBox"),
+        btnCancelEdit: document.getElementById("btnCancelEdit"),
+        btnSavePlayer: document.getElementById("btnSavePlayer"),
+        confirmModal: document.getElementById("confirmModal"),
+        confirmModalTitle: document.getElementById("confirmModalTitle"),
+        confirmModalMessage: document.getElementById("confirmModalMessage"),
+        btnCloseConfirmModal: document.getElementById("btnCloseConfirmModal"),
+        btnConfirmCancel: document.getElementById("btnConfirmCancel"),
+        btnConfirmOk: document.getElementById("btnConfirmOk"),
+        loadingOverlay: document.getElementById("loadingOverlay"),
+        loadingTitle: document.getElementById("loadingTitle"),
+        loadingSub: document.getElementById("loadingSub"),
+        toastContainer: document.getElementById("toastContainer")
+      };
+
+      /* ==========================================================================
+         UTILITAS UMUM (Toast, Loading, Format, Escape)
+         ========================================================================== */
+
+      function showToast(message, type = "success") {
+        const toast = document.createElement("div");
+        toast.className = "toast" + (type === "error" ? " toast-error" : type === "warn" ? " toast-warn" : "");
+
+        const textSpan = document.createElement("span");
+        textSpan.textContent = message;
+
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "modal-close";
+        closeBtn.style.fontSize = "1rem";
+        closeBtn.textContent = "×";
+        closeBtn.onclick = () => toast.remove();
+
+        toast.appendChild(textSpan);
+        toast.appendChild(closeBtn);
+        el.toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+          if (toast.parentNode) toast.remove();
+        }, 4200);
+      }
+
+      function setLoading(active, title = "Memproses Database...", sub = "Mohon tunggu sebentar") {
+        el.loadingTitle.textContent = title;
+        el.loadingSub.textContent = sub;
+        if (active) {
+          el.loadingOverlay.classList.add("active");
+        } else {
+          el.loadingOverlay.classList.remove("active");
+        }
+      }
+
+      function formatBytes(bytes) {
+        if (!bytes || bytes <= 0) return "0 B";
+        const units = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2) + " " + units[i];
+      }
+
+      function formatNumber(val) {
+        if (val === null || val === undefined || val === "") return "-";
+        const num = Number(val);
+        return Number.isNaN(num) ? String(val) : num.toLocaleString("id-ID");
+      }
+
+      function openConfirmModal(title, message, onConfirm) {
+        el.confirmModalTitle.textContent = title;
+        el.confirmModalMessage.textContent = message;
+        state.confirmCallback = onConfirm;
+        el.confirmModal.classList.add("active");
+      }
+
+      function closeConfirmModal() {
+        el.confirmModal.classList.remove("active");
+        state.confirmCallback = null;
+      }
+
+      /* ==========================================================================
+         INISIALISASI MESIN SQL.JS (WASM)
+         ========================================================================== */
+
+      async function initSqlEngine() {
+        el.engineBanner.style.display = "none";
+        el.engineStatusText.textContent = "Memuat mesin SQLite WASM...";
+
+        if (typeof window.initSqlJs !== "function") {
+          el.engineStatusText.textContent = "Gagal memuat CDN sql.js";
+          el.engineBannerMsg.textContent =
+            "Library sql.js dari CDN tidak dapat diakses. Periksa koneksi internet Anda lalu tekan Muat Ulang Mesin.";
+          el.engineBanner.style.display = "flex";
+          showToast("Gagal memuat library sql.js dari CDN.", "error");
+          return;
+        }
+
+        try {
+          state.SQL = await window.initSqlJs({
+            locateFile: function (file) {
+              return SQL_CDN_BASE + file;
+            }
+          });
+          el.engineStatusText.textContent = "SQLite WASM Siap • Offline Memory Mode";
+          el.btnImportTop.disabled = false;
+          el.btnImportHero.disabled = false;
+        } catch (err) {
+          console.error("WASM Init Error:", err);
+          el.engineStatusText.textContent = "Gagal memuat SQLite WASM";
+          el.engineBannerMsg.textContent =
+            "File sql-wasm.wasm gagal dimuat dari CDN: " + (err && err.message ? err.message : "Error tidak diketahui");
+          el.engineBanner.style.display = "flex";
+          showToast("Gagal menginisialisasi modul WASM SQLite.", "error");
+        }
+      }
+
+      /* ==========================================================================
+         IMPOR & INSPEKSI SKEMA DATABASE DINAMIS
+         ========================================================================== */
+
+      function isValidSqliteHeader(uint8) {
+        if (!uint8 || uint8.byteLength < 16) return false;
+        const magic = "SQLite format 3\0";
+        for (let i = 0; i < 16; i++) {
+          if (uint8[i] !== magic.charCodeAt(i)) return false;
+        }
+        return true;
+      }
+
+      function runScalar(db, sql, params = {}) {
+        const stmt = db.prepare(sql);
+        try {
+          stmt.bind(params);
+          if (stmt.step()) {
+            const row = stmt.get();
+            return row[0];
+          }
+          return null;
+        } finally {
+          stmt.free();
+        }
+      }
+
+      function getTableColumns(db, tableName) {
+        const cols = [];
+        const safeName = tableName.replace(/"/g, '""');
+        const res = db.exec(`PRAGMA table_info("${safeName}");`);
+        if (res.length > 0 && res[0].values) {
+          for (const row of res[0].values) {
+            cols.push({
+              cid: row[0],
+              name: String(row[1]),
+              type: String(row[2] || "").toUpperCase(),
+              notnull: row[3],
+              dflt_value: row[4],
+              pk: row[5]
+            });
+          }
+        }
+        return cols;
+      }
+
+      function inspectDatabaseStructure(db) {
+        // 1. Periksa seluruh tabel di sqlite_master
+        const tablesRes = db.exec(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+        );
+        const tableNames = new Set();
+        if (tablesRes.length > 0 && tablesRes[0].values) {
+          for (const r of tablesRes[0].values) {
+            tableNames.add(String(r[0]));
+          }
+        }
+        state.totalTables = tableNames.size;
+
+        if (!tableNames.has("jug_jugadores")) {
+          throw new Error('Tabel utama "jug_jugadores" tidak ditemukan di dalam database ini.');
+        }
+
+        // 2. Periksa kolom jug_jugadores
+        const jugCols = getTableColumns(db, "jug_jugadores");
+        state.availableColumns.clear();
+        state.columnTypes = {};
+        for (const c of jugCols) {
+          state.availableColumns.add(c.name);
+          state.columnTypes[c.name] = c.type;
+        }
+
+        if (!state.availableColumns.has("jugid")) {
+          throw new Error('Kolom primary key "jugid" tidak ditemukan pada tabel "jug_jugadores".');
+        }
+
+        // 3. Periksa tabel jug_posiciones secara dinamis
+        state.positionsMap.clear();
+        if (tableNames.has("jug_posiciones") && state.availableColumns.has("jug_posid")) {
+          try {
+            const posCols = getTableColumns(db, "jug_posiciones").map((c) => c.name);
+            const idCol =
+              posCols.find((c) => c === "posid" || c === "jposid" || c === "jug_posid" || c.endsWith("id")) ||
+              posCols[0];
+            const nameCol =
+              posCols.find((c) => c.includes("nombre") || c.includes("abrev") || c.includes("desc") || c.includes("pos")) ||
+              posCols[1] ||
+              posCols[0];
+
+            if (idCol && nameCol) {
+              const posRes = db.exec(`SELECT "${idCol}", "${nameCol}" FROM "jug_posiciones" ORDER BY "${idCol}" ASC;`);
+              if (posRes.length > 0 && posRes[0].values) {
+                for (const row of posRes[0].values) {
+                  if (row[0] !== null && row[0] !== undefined) {
+                    state.positionsMap.set(String(row[0]), String(row[1] !== null ? row[1] : row[0]));
+                  }
+                }
+              }
+            }
+          } catch (posErr) {
+            console.warn("Gagal membaca tabel jug_posiciones:", posErr);
+          }
+        }
+
+        // 4. Periksa tabel jug_status dan validitas relasi jug_jstdid -> jstdid
+        state.statusMap.clear();
+        state.statusRelationValid = false;
+        if (tableNames.has("jug_status") && state.availableColumns.has("jug_jstdid")) {
+          try {
+            const stdCols = getTableColumns(db, "jug_status").map((c) => c.name);
+            if (stdCols.includes("jstdid") && stdCols.includes("jstd_nombre")) {
+              const stdRes = db.exec('SELECT "jstdid", "jstd_nombre" FROM "jug_status" ORDER BY "jstdid" ASC;');
+              if (stdRes.length > 0 && stdRes[0].values) {
+                for (const row of stdRes[0].values) {
+                  if (row[0] !== null && row[0] !== undefined) {
+                    state.statusMap.set(String(row[0]), String(row[1] !== null ? row[1] : row[0]));
+                  }
+                }
+              }
+
+              if (state.statusMap.size > 0) {
+                // Verifikasi bahwa nilai jug_jstdid di jug_jugadores memang cocok dengan jstdid di jug_status
+                const orphanCount = Number(
+                  runScalar(
+                    db,
+                    'SELECT COUNT(*) FROM "jug_jugadores" WHERE "jug_jstdid" IS NOT NULL AND "jug_jstdid" NOT IN (SELECT "jstdid" FROM "jug_status");'
+                  ) || 0
+                );
+                const matchedCount = Number(
+                  runScalar(
+                    db,
+                    'SELECT COUNT(*) FROM "jug_jugadores" WHERE "jug_jstdid" IN (SELECT "jstdid" FROM "jug_status");'
+                  ) || 0
+                );
+                state.statusRelationValid = matchedCount > 0 || orphanCount === 0;
+              }
+            }
+          } catch (stdErr) {
+            console.warn("Gagal memeriksa relasi jug_status:", stdErr);
+          }
+        }
+
+        // 5. Periksa tabel skill: jug_habilidades & jug_jugadores_habilidades
+        state.skillsSummary = {
+          hasHabilidadesTable: tableNames.has("jug_habilidades"),
+          hasPlayerHabilidadesTable: tableNames.has("jug_jugadores_habilidades"),
+          habilidadesCount: 0,
+          playerHabilidadesCount: 0
+        };
+
+        if (state.skillsSummary.hasHabilidadesTable) {
+          try {
+            state.skillsSummary.habilidadesCount = Number(
+              runScalar(db, 'SELECT COUNT(*) FROM "jug_habilidades";') || 0
+            );
+          } catch (_) {}
+        }
+
+        if (state.skillsSummary.hasPlayerHabilidadesTable) {
+          try {
+            state.skillsSummary.playerHabilidadesCount = Number(
+              runScalar(db, 'SELECT COUNT(*) FROM "jug_jugadores_habilidades";') || 0
+            );
+          } catch (_) {}
+        }
+
+        // 6. Hitung total pemain keseluruhan
+        state.totalPlayersAll = Number(runScalar(db, 'SELECT COUNT(*) FROM "jug_jugadores";') || 0);
+      }
+
+      function handleFileSelected(file) {
+        if (!file) return;
+        if (!state.SQL) {
+          showToast("Mesin SQLite belum siap. Tunggu atau muat ulang mesin.", "error");
+          return;
+        }
+
+        setLoading(true, "Membaca File Database...", `${file.name} (${formatBytes(file.size)})`);
+
+        const reader = new FileReader();
+        reader.onerror = function () {
+          setLoading(false);
+          showToast("Gagal membaca file dari perangkat.", "error");
+        };
+
+        reader.onload = function (e) {
+          setTimeout(() => {
+            let newDb = null;
+            try {
+              const arrayBuffer = e.target.result;
+              const uint8 = new Uint8Array(arrayBuffer);
+
+              if (!isValidSqliteHeader(uint8)) {
+                throw new Error("File yang dipilih bukan database SQLite 3 yang valid (header tidak cocok).");
+              }
+
+              newDb = new state.SQL.Database(uint8);
+
+              // Uji integritas dasar dan inspeksi tabel
+              inspectDatabaseStructure(newDb);
+
+              // Bersihkan instance DB lama jika ada
+              if (state.db) {
+                try {
+                  state.db.close();
+                } catch (_) {}
+              }
+
+              state.db = newDb;
+              // Simpan salinan byte asli untuk fitur Reset All Changes
+              state.originalDbBytes = new Uint8Array(uint8);
+              state.fileName = file.name;
+              state.fileSize = file.size;
+              state.modifiedPlayerIds.clear();
+              state.totalEditOperations = 0;
+              state.currentPage = 1;
+              state.searchQuery = "";
+              state.filterPos = "";
+              state.filterStatus = "";
+
+              el.searchInput.value = "";
+              populateFilterDropdowns();
+              buildTableHeader();
+              updateDashboardStats();
+
+              el.welcomeScreen.style.display = "none";
+              el.workspaceSection.style.display = "flex";
+              el.btnExportTop.disabled = false;
+              el.btnResetTop.disabled = true;
+
+              queryAndRenderPlayers();
+              setLoading(false);
+              showToast(
+                `Database "${file.name}" berhasil dimuat (${formatNumber(state.totalPlayersAll)} pemain).`,
+                "success"
+              );
+            } catch (err) {
+              if (newDb) {
+                try {
+                  newDb.close();
+                } catch (_) {}
+              }
+              setLoading(false);
+              console.error("Database Import Error:", err);
+              showToast(err.message || "File database rusak atau tidak didukung.", "error");
+            } finally {
+              el.dbFileInput.value = "";
+            }
+          }, 40);
+        };
+
+        reader.readAsArrayBuffer(file);
+      }
+
+      /* ==========================================================================
+         FILTER, TABEL DINAMIS, DAN QUERY PAGINATION (PARAMETERIZED SQL)
+         ========================================================================== */
+
+      function populateFilterDropdowns() {
+        // Filter Posisi
+        el.filterPosition.innerHTML = '<option value="">Semua Posisi</option>';
+        if (state.availableColumns.has("jug_posid")) {
+          el.filterPosition.disabled = false;
+          if (state.positionsMap.size > 0) {
+            for (const [id, name] of state.positionsMap.entries()) {
+              const opt = document.createElement("option");
+              opt.value = id;
+              opt.textContent = `${name} (ID: ${id})`;
+              el.filterPosition.appendChild(opt);
+            }
+          } else {
+            // Ambil distinct jug_posid dari tabel pemain jika tabel jug_posiciones tidak ada
+            try {
+              const res = state.db.exec(
+                'SELECT DISTINCT "jug_posid" FROM "jug_jugadores" WHERE "jug_posid" IS NOT NULL ORDER BY "jug_posid" ASC;'
+              );
+              if (res.length > 0 && res[0].values) {
+                for (const r of res[0].values) {
+                  const id = String(r[0]);
+                  const opt = document.createElement("option");
+                  opt.value = id;
+                  opt.textContent = `Posisi ID: ${id}`;
+                  el.filterPosition.appendChild(opt);
+                }
+              }
+            } catch (_) {}
+          }
+        } else {
+          el.filterPosition.disabled = true;
+        }
+
+        // Filter Status
+        el.filterStatus.innerHTML = '<option value="">Semua Status</option>';
+        if (state.availableColumns.has("jug_jstdid")) {
+          el.filterStatus.disabled = false;
+          if (state.statusMap.size > 0) {
+            for (const [id, name] of state.statusMap.entries()) {
+              const opt = document.createElement("option");
+              opt.value = id;
+              opt.textContent = `${name} (ID: ${id})`;
+              el.filterStatus.appendChild(opt);
+            }
+          } else {
+            try {
+              const res = state.db.exec(
+                'SELECT DISTINCT "jug_jstdid" FROM "jug_jugadores" WHERE "jug_jstdid" IS NOT NULL ORDER BY "jug_jstdid" ASC;'
+              );
+              if (res.length > 0 && res[0].values) {
+                for (const r of res[0].values) {
+                  const id = String(r[0]);
+                  const opt = document.createElement("option");
+                  opt.value = id;
+                  opt.textContent = `Status ID: ${id}`;
+                  el.filterStatus.appendChild(opt);
+                }
+              }
+            } catch (_) {}
+          }
+        } else {
+          el.filterStatus.disabled = true;
+        }
+      }
+
+      function getTableDisplayColumns() {
+        const desired = [
+          { col: "jugid", label: "ID" },
+          { col: "jug_nombre", label: "Nama Pemain" },
+          { col: "jug_posid", label: "Posisi" },
+          { col: "jug_edad", label: "Umur" },
+          { col: "jug_poder", label: "Power" },
+          { col: "jug_potencial", label: "Potensi" },
+          { col: "jug_star", label: "Bintang" },
+          { col: "jug_valor", label: "Nilai" },
+          { col: "jug_salario", label: "Gaji" },
+          { col: "jug_jstdid", label: "Status" },
+          { col: "jug_numero", label: "No" }
+        ];
+        return desired.filter((d) => state.availableColumns.has(d.col));
+      }
+
+      function buildTableHeader() {
+        el.playerTableHeadRow.innerHTML = "";
+        const cols = getTableDisplayColumns();
+
+        for (const c of cols) {
+          const th = document.createElement("th");
+          th.innerHTML = `${c.label}<span class="col-hint">${c.col}</span>`;
+          el.playerTableHeadRow.appendChild(th);
+        }
+
+        const thAction = document.createElement("th");
+        thAction.textContent = "Aksi";
+        thAction.style.textAlign = "right";
+        el.playerTableHeadRow.appendChild(thAction);
+      }
+
+      function buildWhereClauseAndParams() {
+        const clauses = [];
+        const params = {};
+
+        if (state.searchQuery.trim() !== "" && state.availableColumns.has("jug_nombre")) {
+          // Escape karakter wildcard % dan _ agar pencarian karakter khusus akurat
+          const escaped = state.searchQuery
+            .trim()
+            .replace(/\\/g, "\\\\")
+            .replace(/%/g, "\\%")
+            .replace(/_/g, "\\_");
+          clauses.push(`LOWER(CAST("jug_nombre" AS TEXT)) LIKE LOWER($search) ESCAPE '\\'`);
+          params.$search = `%${escaped}%`;
+        }
+
+        if (state.filterPos !== "" && state.availableColumns.has("jug_posid")) {
+          clauses.push(`CAST("jug_posid" AS TEXT) = $posid`);
+          params.$posid = String(state.filterPos);
+        }
+
+        if (state.filterStatus !== "" && state.availableColumns.has("jug_jstdid")) {
+          clauses.push(`CAST("jug_jstdid" AS TEXT) = $jstdid`);
+          params.$jstdid = String(state.filterStatus);
+        }
+
+        const whereSql = clauses.length > 0 ? "WHERE " + clauses.join(" AND ") : "";
+        return { whereSql, params };
+      }
+
+      function queryAndRenderPlayers() {
+        if (!state.db) return;
+
+        try {
+          const { whereSql, params } = buildWhereClauseAndParams();
+
+          // 1. Hitung total baris yang cocok dengan filter
+          const countSql = `SELECT COUNT(*) FROM "jug_jugadores" ${whereSql};`;
+          state.filteredPlayersCount = Number(runScalar(state.db, countSql, params) || 0);
+
+          state.totalPages = Math.max(1, Math.ceil(state.filteredPlayersCount / PAGE_SIZE));
+          if (state.currentPage > state.totalPages) state.currentPage = state.totalPages;
+          if (state.currentPage < 1) state.currentPage = 1;
+
+          const offset = (state.currentPage - 1) * PAGE_SIZE;
+          const displayCols = getTableDisplayColumns();
+          const selectColsSql = displayCols.map((c) => `"${c.col}"`).join(", ");
+
+          const dataSql = `
+            SELECT ${selectColsSql}
+            FROM "jug_jugadores"
+            ${whereSql}
+            ORDER BY "jugid" ASC
+            LIMIT $limit OFFSET $offset;
+          `;
+
+          const queryParams = Object.assign({}, params, {
+            $limit: PAGE_SIZE,$offset: offset
+          });
+
+          const stmt = state.db.prepare(dataSql);
+          const rows = [];
+          try {
+            stmt.bind(queryParams);
+            while (stmt.step()) {
+              rows.push(stmt.getAsObject());
+            }
+          } finally {
+            stmt.free();
+          }
+
+          renderTableRows(rows, displayCols);
+          updatePaginationUI(offset, rows.length);
+          updateDashboardStats();
+        } catch (err) {
+          console.error("Query Error:", err);
+          showToast("Gagal memuat daftar pemain: " + err.message, "error");
+        }
+      }
+
+      function formatPositionBadge(val) {
+        if (val === null || val === undefined || val === "") return "-";
+        const key = String(val);
+        if (state.positionsMap.has(key)) {
+          return `${state.positionsMap.get(key)} (#${key})`;
+        }
+        return `ID: ${key}`;
+      }
+
+      function formatStatusBadge(val) {
+        if (val === null || val === undefined || val === "") return "-";
+        const key = String(val);
+        if (state.statusMap.has(key)) {
+          return `${state.statusMap.get(key)}`;
+        }
+        return `ID: ${key}`;
+      }
+
+      function renderTableRows(rows, displayCols) {
+        el.playerTableBody.innerHTML = "";
+
+        if (rows.length === 0) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = displayCols.length + 1;
+          td.className = "empty-state";
+          td.textContent = "Tidak ada pemain yang cocok dengan kata kunci atau filter saat ini.";
+          tr.appendChild(td);
+          el.playerTableBody.appendChild(tr);
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        for (const row of rows) {
+          const jugId = row.jugid;
+          const isEdited = state.modifiedPlayerIds.has(String(jugId));
+
+          const tr = document.createElement("tr");
+          if (isEdited) tr.className = "edited-row";
+
+          for (const colDef of displayCols) {
+            const td = document.createElement("td");
+            const rawVal = row[colDef.col];
+
+            if (colDef.col === "jug_nombre") {
+              const wrap = document.createElement("div");
+              wrap.className = "player-name-cell";
+              const nameText = document.createElement("span");
+              nameText.textContent = rawVal !== null && rawVal !== undefined ? String(rawVal) : "(Tanpa Nama)";
+              wrap.appendChild(nameText);
+
+              if (isEdited) {
+                const modBadge = document.createElement("span");
+                modBadge.className = "badge badge-neon";
+                modBadge.textContent = "Edited";
+                wrap.appendChild(modBadge);
+              }
+              td.appendChild(wrap);
+            } else if (colDef.col === "jug_posid") {
+              const badge = document.createElement("span");
+              badge.className = "badge";
+              badge.textContent = formatPositionBadge(rawVal);
+              td.appendChild(badge);
+            } else if (colDef.col === "jug_jstdid") {
+              const badge = document.createElement("span");
+              badge.className = "badge";
+              badge.textContent = formatStatusBadge(rawVal);
+              td.appendChild(badge);
+            } else if (colDef.col === "jug_valor" || colDef.col === "jug_salario") {
+              td.textContent = formatNumber(rawVal);
+            } else {
+              td.textContent = rawVal !== null && rawVal !== undefined ? String(rawVal) : "-";
+            }
+
+            tr.appendChild(td);
+          }
+
+          // Kolom Tombol Edit
+          const tdAction = document.createElement("td");
+          tdAction.style.textAlign = "right";
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "btn btn-sm btn-outline";
+          editBtn.textContent = "✏ Edit";
+          editBtn.addEventListener("click", function () {
+            openEditPlayerModal(jugId);
+          });
+          tdAction.appendChild(editBtn);
+          tr.appendChild(tdAction);
+
+          fragment.appendChild(tr);
+        }
+
+        el.playerTableBody.appendChild(fragment);
+      }
+
+      function updatePaginationUI(offset, currentCount) {
+        const start = state.filteredPlayersCount === 0 ? 0 : offset + 1;
+        const end = offset + currentCount;
+
+        el.paginationSummary.textContent = `Menampilkan ${formatNumber(start)} – ${formatNumber(end)} dari ${formatNumber(
+          state.filteredPlayersCount
+        )} pemain`;
+        el.badgePageInfo.textContent = `Halaman ${formatNumber(state.currentPage)} / ${formatNumber(state.totalPages)}`;
+        el.pageJumpInput.value = state.currentPage;
+        el.pageJumpInput.max = state.totalPages;
+
+        el.btnFirstPage.disabled = state.currentPage <= 1;
+        el.btnPrevPage.disabled = state.currentPage <= 1;
+        el.btnNextPage.disabled = state.currentPage >= state.totalPages;
+        el.btnLastPage.disabled = state.currentPage >= state.totalPages;
+      }
+
+      function updateDashboardStats() {
+        el.statFileName.textContent = state.fileName || "-";
+        el.statFileName.title = state.fileName || "";
+        el.statFileSize.textContent = formatBytes(state.fileSize);
+        el.statDbStatus.textContent = "SQLite 3 Valid";
+
+        el.statTotalPlayers.textContent = formatNumber(state.totalPlayersAll);
+        el.statFilteredPlayers.textContent =
+          state.filteredPlayersCount === state.totalPlayersAll
+            ? "Seluruh pemain ditampilkan"
+            : `Filter aktif: ${formatNumber(state.filteredPlayersCount)} cocok`;
+
+        el.statTotalTables.textContent = formatNumber(state.totalTables);
+        el.statDetectedCols.textContent = `${state.availableColumns.size} kolom di jug_jugadores`;
+
+        el.statPendingChanges.textContent = formatNumber(state.totalEditOperations);
+        el.statPendingSub.textContent = `${formatNumber(state.modifiedPlayerIds.size)} pemain dimodifikasi`;
+
+        el.btnResetTop.disabled = state.modifiedPlayerIds.size === 0;
+      }
+
+      /* ==========================================================================
+         MODAL EDIT PEMAIN & VALIDASI DATA
+         ========================================================================== */
+
+      function openEditPlayerModal(jugId) {
+        if (!state.db) {
+          showToast("Silakan impor database terlebih dahulu.", "error");
+          return;
+        }
+
+        try {
+          const stmt = state.db.prepare('SELECT * FROM "jug_jugadores" WHERE "jugid" = $id LIMIT 1;');
+          let playerRow = null;
+          try {
+            stmt.bind({ $id: jugId });
+            if (stmt.step()) {
+              playerRow = stmt.getAsObject();
+            }
+          } finally {
+            stmt.free();
+          }
+
+          if (!playerRow) {
+            showToast(`Pemain dengan jugid ${jugId} tidak ditemukan.`, "error");
+            return;
+          }
+
+          state.editingPlayerId = jugId;
+          state.editingOriginalRow = playerRow;
+
+          const playerName = playerRow.jug_nombre ? String(playerRow.jug_nombre) : `ID #${jugId}`;
+          el.editModalTitle.textContent = `Edit Pemain: ${playerName}`;
+          el.editModalSubtitle.textContent = `Primary Key jugid: ${jugId} (Read-Only / Tidak Dapat Diubah)`;
+
+          el.editFormGrid.innerHTML = "";
+
+          // Field jugid (Terkunci / Read-Only)
+          const idGroup = document.createElement("div");
+          idGroup.className = "form-group";
+          idGroup.innerHTML = `
+            <label class="form-label">
+              <span>ID Unik Pemain</span>
+              <span class="form-col-code">jugid</span>
+            </label>
+            <input type="text" class="input-field" value="${String(jugId)}" readonly disabled />
+            <span class="form-help">ID utama tidak diizinkan untuk diubah.</span>
+          `;
+          el.editFormGrid.appendChild(idGroup);
+
+          // Render seluruh kolom yang didukung dan tersedia di tabel jug_jugadores
+          for (const field of SUPPORTED_PLAYER_FIELDS) {
+            if (!state.availableColumns.has(field.col)) continue;
+
+            const currentVal =
+              playerRow[field.col] !== null && playerRow[field.col] !== undefined ? playerRow[field.col] : "";
+
+            const group = document.createElement("div");
+            group.className = "form-group" + (field.col === "jug_nombre" ? " full-width" : "");
+
+            const labelEl = document.createElement("label");
+            labelEl.className = "form-label";
+            labelEl.setAttribute("for", "field_" + field.col);
+            labelEl.innerHTML = `<span>${field.label}</span><span class="form-col-code">${field.col}</span>`;
+            group.appendChild(labelEl);
+
+            let inputEl;
+
+            if (field.type === "position" && state.positionsMap.size > 0) {
+              inputEl = document.createElement("select");
+              inputEl.className = "select-field";
+              const currentStr = String(currentVal);
+              let foundCurrent = false;
+
+              for (const [posId, posName] of state.positionsMap.entries()) {
+                const opt = document.createElement("option");
+                opt.value = posId;
+                opt.textContent = `${posName} (jug_posid: ${posId})`;
+                if (posId === currentStr) {
+                  opt.selected = true;
+                  foundCurrent = true;
+                }
+                inputEl.appendChild(opt);
+              }
+
+              if (!foundCurrent && currentStr !== "") {
+                const extraOpt = document.createElement("option");
+                extraOpt.value = currentStr;
+                extraOpt.textContent = `ID Saat Ini: ${currentStr}`;
+                extraOpt.selected = true;
+                inputEl.insertBefore(extraOpt, inputEl.firstChild);
+              }
+            } else if (field.type === "status") {
+              if (state.statusRelationValid && state.statusMap.size > 0) {
+                inputEl = document.createElement("select");
+                inputEl.className = "select-field";
+                const currentStr = String(currentVal);
+                let foundCurrent = false;
+
+                for (const [stdId, stdName] of state.statusMap.entries()) {
+                  const opt = document.createElement("option");
+                  opt.value = stdId;
+                  opt.textContent = `${stdName} (jstdid: ${stdId})`;
+                  if (stdId === currentStr) {
+                    opt.selected = true;
+                    foundCurrent = true;
+                  }
+                  inputEl.appendChild(opt);
+                }
+
+                if (!foundCurrent && currentStr !== "") {
+                  const extraOpt = document.createElement("option");
+                  extraOpt.value = currentStr;
+                  extraOpt.textContent = `ID Saat Ini: ${currentStr}`;
+                  extraOpt.selected = true;
+                  inputEl.insertBefore(extraOpt, inputEl.firstChild);
+                }
+              } else {
+                inputEl = document.createElement("input");
+                inputEl.type = "text";
+                inputEl.className = "input-field";
+                inputEl.value = String(currentVal);
+                inputEl.disabled = true;
+                inputEl.readOnly = true;
+              }
+            } else {
+              inputEl = document.createElement("input");
+              inputEl.className = "input-field";
+              if (field.type === "int" || field.type === "number" || field.type === "position") {
+                inputEl.type = "number";
+                inputEl.step = field.type === "int" || field.type === "position" ? "1" : "any";
+                if (field.min !== null) inputEl.min = String(field.min);
+                if (field.max !== null) inputEl.max = String(field.max);
+              } else {
+                inputEl.type = "text";
+              }
+              inputEl.value = String(currentVal);
+            }
+
+            inputEl.id = "field_" + field.col;
+            inputEl.dataset.col = field.col;
+            group.appendChild(inputEl);
+
+            if (field.col === "jug_poder") {
+              const help = document.createElement("span");
+              help.className = "form-help";
+              help.textContent = "Nilai asli kolom jug_poder (tidak diasumsikan sebagai overall rating).";
+              group.appendChild(help);
+            } else if (field.col === "jug_jstdid" && !state.statusRelationValid) {
+              const help = document.createElement("span");
+              help.className = "form-help";
+              help.textContent = "Relasi jug_status tidak terverifikasi; status dikunci demi keamanan data.";
+              group.appendChild(help);
+            }
+
+            el.editFormGrid.appendChild(group);
+          }
+
+          // Informasi Skill Pemain (jug_habilidades & jug_jugadores_habilidades)
+          renderSkillsNoticeInModal(jugId, playerRow);
+
+          el.editPlayerModal.classList.add("active");
+        } catch (err) {
+          console.error("Open Modal Error:", err);
+          showToast("Gagal membuka data pemain: " + err.message, "error");
+        }
+      }
+
+      function renderSkillsNoticeInModal(jugId, playerRow) {
+        const s = state.skillsSummary;
+        let extraColsText = "";
+        if (state.availableColumns.has("jug_habilidad_A") || state.availableColumns.has("jug_habilidad_B")) {
+          const habA = playerRow.jug_habilidad_A !== undefined && playerRow.jug_habilidad_A !== null ? playerRow.jug_habilidad_A : "-";
+          const habB = playerRow.jug_habilidad_B !== undefined && playerRow.jug_habilidad_B !== null ? playerRow.jug_habilidad_B : "-";
+          extraColsText = `<div style="margin-top:0.35rem; font-family:monospace; font-size:0.75rem;">Kolom tabel pemain: jug_habilidad_A = <strong>${habA}</strong> | jug_habilidad_B = <strong>${habB}</strong></div>`;
+        }
+
+        if (!s.hasPlayerHabilidadesTable || s.playerHabilidadesCount === 0) {
+          el.skillsInfoBox.innerHTML = `
+            <strong>ℹ️ Informasi Skill Pemain (jug_jugadores_habilidades)</strong>
+            Data skill pemain belum tersedia di database (tabel <code>jug_jugadores_habilidades</code> memiliki 0 baris${
+              s.hasHabilidadesTable ? `, sedangkan master <code>jug_habilidades</code> memiliki ${s.habilidadesCount} baris` : ""
+            }). Editor tidak mengarang atau menambahkan data skill secara otomatis.
+            ${extraColsText}
+          `;
+        } else {
+          // Jika pada database lain terdapat baris di jug_jugadores_habilidades, tampilkan secara informatif
+          let playerSkillsList = "Tidak ada relasi skill untuk pemain ini.";
+          try {
+            const relCols = getTableColumns(state.db, "jug_jugadores_habilidades").map((c) => c.name);
+            const pCol = relCols.find((c) => c.includes("jug")) || relCols[0];
+            if (pCol) {
+              const cnt = Number(
+                runScalar(
+                  state.db,
+                  `SELECT COUNT(*) FROM "jug_jugadores_habilidades" WHERE "${pCol}" = $id;`,
+                  { $id: jugId }
+                ) || 0
+              );
+              playerSkillsList = `Ditemukan ${cnt} baris skill terkait untuk pemain ini di tabel jug_jugadores_habilidades.`;
+            }
+          } catch (_) {}
+
+          el.skillsInfoBox.innerHTML = `
+            <strong>ℹ️ Informasi Skill Pemain (jug_jugadores_habilidades)</strong>
+            ${playerSkillsList}
+            ${extraColsText}
+          `;
+        }
+      }
+
+      function closeEditPlayerModal() {
+        el.editPlayerModal.classList.remove("active");
+        state.editingPlayerId = null;
+        state.editingOriginalRow = null;
+      }
+
+      function validateAndCollectChanges() {
+        if (!state.db || state.editingPlayerId === null || !state.editingOriginalRow) {
+          throw new Error("Tidak ada sesi pengeditan pemain yang aktif.");
+        }
+
+        const changes = {};
+        let changedCount = 0;
+
+        for (const field of SUPPORTED_PLAYER_FIELDS) {
+          if (!state.availableColumns.has(field.col)) continue;
+          if (field.col === "jug_jstdid" && !state.statusRelationValid) continue;
+
+          const input = document.getElementById("field_" + field.col);
+          if (!input || input.disabled) continue;
+
+          const rawVal = input.value;
+          const origVal = state.editingOriginalRow[field.col];
+          let parsedVal;
+
+          if (field.type === "text") {
+            const trimmed = rawVal.trim();
+            if (field.required && trimmed.length === 0) {
+              throw new Error(`${field.label} (${field.col}) tidak boleh kosong.`);
+            }
+            if (trimmed.length > 120) {
+              throw new Error(`${field.label} (${field.col}) terlalu panjang (maksimal 120 karakter).`);
+            }
+            parsedVal = trimmed;
+          } else if (field.type === "text_or_int") {
+            const trimmed = rawVal.trim();
+            if (trimmed === "") {
+              parsedVal = null;
+            } else if (/^-?\d+$/.test(trimmed)) {
+              parsedVal = parseInt(trimmed, 10);
+            } else {
+              parsedVal = trimmed;
+            }
+          } else if (field.type === "int" || field.type === "position" || field.type === "status") {
+            if (rawVal.trim() === "") {
+              throw new Error(`${field.label} (${field.col}) harus diisi dengan angka bulat yang valid.`);
+            }
+            const num = Number(rawVal);
+            if (!Number.isInteger(num)) {
+              throw new Error(`${field.label} (${field.col}) harus berupa bilangan bulat (integer).`);
+            }
+            if (field.min !== null && num < field.min) {
+              throw new Error(`${field.label} (${field.col}) minimal bernilai ${field.min}.`);
+            }
+            if (field.max !== null && num > field.max) {
+              throw new Error(`${field.label} (${field.col}) maksimal bernilai ${field.max}.`);
+            }
+            if (field.type === "status" && state.statusRelationValid && !state.statusMap.has(String(num))) {
+              throw new Error(`Nilai status (${num}) tidak terdaftar di tabel jug_status.`);
+            }
+            parsedVal = num;
+          } else if (field.type === "number") {
+            if (rawVal.trim() === "") {
+              throw new Error(`${field.label} (${field.col}) harus berupa angka yang valid.`);
+            }
+            const num = Number(rawVal);
+            if (Number.isNaN(num) || !Number.isFinite(num)) {
+              throw new Error(`${field.label} (${field.col}) harus berupa angka yang valid.`);
+            }
+            if (field.min !== null && num < field.min) {
+              throw new Error(`${field.label} (${field.col}) tidak boleh kurang dari ${field.min}.`);
+            }
+            if (field.max !== null && num > field.max) {
+              throw new Error(`${field.label} (${field.col}) melebihi batas wajar (${field.max}).`);
+            }
+            // Pertahankan integer jika tipe kolom di SQLite adalah INT dan inputnya bulat
+            parsedVal = Number.isInteger(num) ? num : num;
+          }
+
+          const origNormalized = origVal === null || origVal === undefined ? "" : String(origVal);
+          const newNormalized = parsedVal === null || parsedVal === undefined ? "" : String(parsedVal);
+
+          if (origNormalized !== newNormalized) {
+            changes[field.col] = parsedVal;
+            changedCount++;
+          }
+        }
+
+        return { changes, changedCount };
+      }
+
+      function handleSaveButtonClick() {
+        let validationResult;
+        try {
+          validationResult = validateAndCollectChanges();
+        } catch (validationErr) {
+          showToast(validationErr.message, "error");
+          return;
+        }
+
+        if (validationResult.changedCount === 0) {
+          showToast("Tidak ada perubahan data yang dilakukan.", "warn");
+          return;
+        }
+
+        const jugId = state.editingPlayerId;
+        const playerName =
+          validationResult.changes.jug_nombre ||
+          state.editingOriginalRow.jug_nombre ||
+          `ID #${jugId}`;
+
+        openConfirmModal(
+          "Simpan Perubahan Pemain?",
+          `Anda akan memperbarui ${validationResult.changedCount} kolom untuk pemain "${playerName}" (jugid: ${jugId}). Lanjutkan?`,
+          function () {
+            commitPlayerUpdate(jugId, validationResult.changes, validationResult.changedCount);
+          }
+        );
+      }
+
+      function commitPlayerUpdate(jugId, changes, changedCount) {
+        if (!state.db) return;
+
+        const setFragments = [];
+        const sqlParams = { $jugid: jugId };
+
+        let idx = 0;
+        for (const [col, val] of Object.entries(changes)) {
+          idx++;
+          const paramKey = `$val_${idx}`;
+          setFragments.push(`"${col}" = ${paramKey}`);
+          sqlParams[paramKey] = val;
+        }
+
+        const updateSql = `UPDATE "jug_jugadores" SET ${setFragments.join(", ")} WHERE "jugid" = $jugid;`;
+
+        try {
+          state.db.run("BEGIN TRANSACTION;");
+          const stmt = state.db.prepare(updateSql);
+          try {
+            stmt.run(sqlParams);
+          } finally {
+            stmt.free();
+          }
+          state.db.run("COMMIT;");
+
+          state.modifiedPlayerIds.add(String(jugId));
+          state.totalEditOperations += changedCount;
+
+          closeEditPlayerModal();
+          queryAndRenderPlayers();
+          showToast(`Berhasil menyimpan ${changedCount} perubahan pada pemain (jugid: ${jugId}).`, "success");
+        } catch (err) {
+          try {
+            state.db.run("ROLLBACK;");
+          } catch (_) {}
+          console.error("SQL Update Error:", err);
+          showToast("Gagal menyimpan perubahan ke database: " + err.message, "error");
+        }
+      }
+
+      /* ==========================================================================
+         RESET ALL CHANGES & EKSPOR DATABASE (.DB)
+         ========================================================================== */
+
+      function handleResetAllClick() {
+        if (!state.db || !state.originalDbBytes) {
+          showToast("Belum ada database aktif untuk direset.", "warn");
+          return;
+        }
+
+        if (state.modifiedPlayerIds.size === 0) {
+          showToast("Belum ada perubahan yang dilakukan.", "warn");
+          return;
+        }
+
+        openConfirmModal(
+          "Reset Seluruh Perubahan?",
+          `Seluruh perubahan pada ${state.modifiedPlayerIds.size} pemain (${state.totalEditOperations} edit) akan dibatalkan dan dikembalikan ke kondisi awal database saat pertama diimpor. Lanjutkan?`,
+          function () {
+            setLoading(true, "Memulihkan Database Awal...", "Mengembalikan byte SQLite asli di memori");
+            setTimeout(() => {
+              try {
+                const restoredDb = new state.SQL.Database(new Uint8Array(state.originalDbBytes));
+                try {
+                  state.db.close();
+                } catch (_) {}
+                state.db = restoredDb;
+                state.modifiedPlayerIds.clear();
+                state.totalEditOperations = 0;
+
+                inspectDatabaseStructure(state.db);
+                queryAndRenderPlayers();
+                setLoading(false);
+                showToast("Seluruh perubahan berhasil direset ke kondisi awal database.", "success");
+              } catch (err) {
+                setLoading(false);
+                console.error("Reset Error:", err);
+                showToast("Gagal mereset database: " + err.message, "error");
+              }
+            }, 40);
+          }
+        );
+      }
+
+      function handleExportDatabase() {
+        if (!state.db) {
+          showToast("Silakan impor database terlebih dahulu sebelum mengekspor.", "error");
+          return;
+        }
+
+        setLoading(true, "Mengekspor Database SQLite...", "Menyusun seluruh tabel, indeks, dan struktur asli");
+
+        setTimeout(() => {
+          try {
+            const exportedBytes = state.db.export();
+            if (!exportedBytes || exportedBytes.byteLength < 100 || !isValidSqliteHeader(exportedBytes)) {
+              throw new Error("Hasil ekspor tidak menghasilkan header SQLite yang valid.");
+            }
+
+            const blob = new Blob([exportedBytes], { type: "application/x-sqlite3" });
+            const url = URL.createObjectURL(blob);
+
+            const downloadLink = document.createElement("a");
+            downloadLink.href = url;
+            downloadLink.download = "super_kick_off_edited.db";
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+            setLoading(false);
+            showToast(
+              `Database berhasil diekspor sebagai "super_kick_off_edited.db" (${formatBytes(exportedBytes.byteLength)}).`,
+              "success"
+            );
+          } catch (err) {
+            setLoading(false);
+            console.error("Export Error:", err);
+            showToast("Gagal mengekspor database: " + err.message, "error");
+          }
+        }, 50);
+      }
+
+      /* ==========================================================================
+         EVENT LISTENERS & DEBOUNCE PENCARIAN
+         ========================================================================== */
+
+      let searchDebounceTimer = null;
+
+      function bindEvents() {
+        const triggerFilePicker = () => {
+          if (!state.SQL) {
+            showToast("Mesin SQLite belum siap.", "error");
+            return;
+          }
+          el.dbFileInput.click();
+        };
+
+        el.btnImportTop.addEventListener("click", triggerFilePicker);
+        el.btnImportHero.addEventListener("click", triggerFilePicker);
+        el.btnRetryEngine.addEventListener("click", initSqlEngine);
+
+        el.dbFileInput.addEventListener("change", function (e) {
+          const file = e.target.files && e.target.files[0];
+          if (file) handleFileSelected(file);
+        });
+
+        el.btnExportTop.addEventListener("click", handleExportDatabase);
+        el.btnResetTop.addEventListener("click", handleResetAllClick);
+
+        // Pencarian real-time dengan debounce 260ms agar tidak membebani CPU pada 62.928 baris
+        el.searchInput.addEventListener("input", function () {
+          clearTimeout(searchDebounceTimer);
+          searchDebounceTimer = setTimeout(() => {
+            state.searchQuery = el.searchInput.value;
+            state.currentPage = 1;
+            queryAndRenderPlayers();
+          }, 260);
+        });
+
+        el.filterPosition.addEventListener("change", function () {
+          state.filterPos = el.filterPosition.value;
+          state.currentPage = 1;
+          queryAndRenderPlayers();
+        });
+
+        el.filterStatus.addEventListener("change", function () {
+          state.filterStatus = el.filterStatus.value;
+          state.currentPage = 1;
+          queryAndRenderPlayers();
+        });
+
+        el.btnClearFilters.addEventListener("click", function () {
+          el.searchInput.value = "";
+          el.filterPosition.value = "";
+          el.filterStatus.value = "";
+          state.searchQuery = "";
+          state.filterPos = "";
+          state.filterStatus = "";
+          state.currentPage = 1;
+          queryAndRenderPlayers();
+        });
+
+        // Navigasi Pagination
+        el.btnFirstPage.addEventListener("click", function () {
+          if (state.currentPage > 1) {
+            state.currentPage = 1;
+            queryAndRenderPlayers();
+          }
+        });
+
+        el.btnPrevPage.addEventListener("click", function () {
+          if (state.currentPage > 1) {
+            state.currentPage--;
+            queryAndRenderPlayers();
+          }
+        });
+
+        el.btnNextPage.addEventListener("click", function () {
+          if (state.currentPage < state.totalPages) {
+            state.currentPage++;
+            queryAndRenderPlayers();
+          }
+        });
+
+        el.btnLastPage.addEventListener("click", function () {
+          if (state.currentPage < state.totalPages) {
+            state.currentPage = state.totalPages;
+            queryAndRenderPlayers();
+          }
+        });
+
+        el.pageJumpInput.addEventListener("change", function () {
+          const val = parseInt(el.pageJumpInput.value, 10);
+          if (!Number.isNaN(val)) {
+            state.currentPage = Math.min(Math.max(1, val), state.totalPages);
+            queryAndRenderPlayers();
+          } else {
+            el.pageJumpInput.value = state.currentPage;
+          }
+        });
+
+        // Modal Edit Pemain
+        el.btnCloseEditModal.addEventListener("click", closeEditPlayerModal);
+        el.btnCancelEdit.addEventListener("click", closeEditPlayerModal);
+        el.btnSavePlayer.addEventListener("click", handleSaveButtonClick);
+
+        el.editPlayerForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          handleSaveButtonClick();
+        });
+
+        // Modal Konfirmasi
+        el.btnCloseConfirmModal.addEventListener("click", closeConfirmModal);
+        el.btnConfirmCancel.addEventListener("click", closeConfirmModal);
+        el.btnConfirmOk.addEventListener("click", function () {
+          const cb = state.confirmCallback;
+          closeConfirmModal();
+          if (typeof cb === "function") cb();
+        });
+      }
+
+      // Jalankan saat DOM siap
+      bindEvents();
+      initSqlEngine();
+    })();
+  </script>
+</body>
+</html>
